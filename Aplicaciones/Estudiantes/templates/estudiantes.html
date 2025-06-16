@@ -1,0 +1,243 @@
+{% extends './plantilla.html' %}
+{% block contenido %}
+
+<br><br>
+<h1 class="text-center">Listado de estudiantes</h1>
+
+<div class="text-end mb-3">
+    <button onclick="abrirModal()" class="btn btn-success">Registrar nuevo Estudiante</button>
+</div>
+
+<div>
+    <table id="tblEstudiantes" class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>NOMBRES</th>
+                <th>APELLIDOS</th>
+                <th>FECHA NACIMIENTO</th>
+                <th>FOTO</th>
+                <th>ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody id="tablaEstudiantes"></tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalEstudiante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="formEstudiante" class="modal-content" enctype="multipart/form-data">
+            <div class="modal-header">
+                <h5 class="modal-title">Formulario Estudiante</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="personaId" name="personaId">
+
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <input type="text" name="nombre" id="nombre" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label for="apellidos" class="form-label">Apellidos</label>
+                    <input type="text" name="apellidos" id="apellidos" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label for="fecha_nacimiento" class="form-label">Fecha Nacimiento</label>
+                    <input type="date" name="fecha_nacimiento" id="fecha_nacimiento" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label for="foto" class="form-label">Foto</label>
+                    <input type="file" name="foto" id="foto" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" type="submit">Guardar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    listadoEstudiantes();
+
+    document.getElementById('formEstudiante').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const id = document.getElementById('personaId').value;
+        const formData = new FormData(this);
+        if (id) {
+            actualizarEstudiante(id, formData);
+        } else {
+            nuevoEstudiante(formData);
+        }
+    });
+});
+
+function listadoEstudiantes() {
+    fetch('/listadoEstudiantes/')
+        .then(response => response.json())
+        .then(data => {
+            const tabla = document.getElementById('tablaEstudiantes');
+            tabla.innerHTML = '';
+            data.estudiantes.forEach(estu => {
+                tabla.innerHTML += `
+                    <tr>
+                        <td>${estu.id}</td>
+                        <td>${estu.nombre}</td>
+                        <td>${estu.apellidos}</td>
+                        <td>${estu.fecha_nacimiento}</td>
+                        <td>${estu.foto ? `<img src="/media/${estu.foto}" width="60">` : 'Sin foto'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editar(${estu.id})">Editar</button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminar(${estu.id})">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+}
+
+function abrirModal() {
+    const modal = new bootstrap.Modal(document.getElementById('modalEstudiante'));
+    modal.show();
+}
+
+function cerrarModal() {
+    listadoEstudiantes();
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstudiante'));
+    modal.hide();
+    document.getElementById('formEstudiante').reset();
+    document.getElementById('personaId').value = '';
+}
+
+function nuevoEstudiante(formData) {
+    fetch('/nuevoEstudiante/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log(data.mensaje);
+        cerrarModal();
+    });
+}
+
+function editar(id) {
+    fetch(`/listadoEstudiantes/`)
+        .then(res => res.json())
+        .then(data => {
+            const estudiante = data.estudiantes.find(e => e.id === id);
+            if (estudiante) {
+                document.getElementById('personaId').value = estudiante.id;
+                document.getElementById('nombre').value = estudiante.nombre;
+                document.getElementById('apellidos').value = estudiante.apellidos;
+                document.getElementById('fecha_nacimiento').value = estudiante.fecha_nacimiento;
+                abrirModal();
+            }
+        });
+}
+
+function actualizarEstudiante(id, formData) {
+    fetch(`/editarEstudiante/${id}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrftoken },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log(data.mensaje);
+        cerrarModal();
+    });
+}
+
+function eliminar(id) {
+    if (confirm('¿Seguro que deseas eliminar este estudiante?')) {
+        fetch(`/eliminarEstudiante/${id}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log(data.mensaje);
+            listadoEstudiantes();
+        });
+    }
+}
+</script>
+
+<!-- DataTable -->
+<script>
+new DataTable('#tblEstudiantes', {
+    layout: {
+        topStart: {
+            buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+        }
+    }
+});
+</script>
+
+<!-- Validación con jQuery Validate -->
+<script>
+$("#formEstudiante").validate({
+    rules: {
+        nombre: { required: true, minlength: 3 },
+        apellidos: { required: true, minlength: 3 },
+        fecha_nacimiento: { required: true },
+        foto: { required: true }
+    },
+    messages: {
+        nombre: {
+            required: "Por favor, ingresa el nombre",
+            minlength: "Debe tener al menos 3 caracteres"
+        },
+        apellidos: {
+            required: "Por favor, ingresa los apellidos",
+            minlength: "Debe tener al menos 3 caracteres"
+        },
+        fecha_nacimiento: {
+            required: "Selecciona la fecha de nacimiento",
+        },
+        foto: {
+            required: "Selecciona una imagen",
+        }
+    }
+});
+</script>
+
+<!-- FileInput para imagen -->
+<script>
+$("#foto").fileinput({
+    language: "es",
+    allowedFileExtensions: ["jpg", "jpeg", "png"],
+    showCaption: false,
+    dropZoneEnabled: true,
+    showClose: false
+});
+</script>
+
+{% endblock %}
