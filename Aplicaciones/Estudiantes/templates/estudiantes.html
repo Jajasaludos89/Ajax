@@ -1,28 +1,25 @@
 {% extends './plantilla.html' %}
 {% block contenido %}
 
-<br><br>
-<h1 class="text-center">Listado de estudiantes</h1>
+<h1 class="text-center mt-4">Listado de estudiantes</h1>
 
 <div class="text-end mb-3">
     <button onclick="abrirModal()" class="btn btn-success">Registrar nuevo Estudiante</button>
 </div>
 
-<div>
-    <table id="tblEstudiantes" class="table table-bordered table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th>
-                <th>NOMBRES</th>
-                <th>APELLIDOS</th>
-                <th>FECHA NACIMIENTO</th>
-                <th>FOTO</th>
-                <th>ACCIONES</th>
-            </tr>
-        </thead>
-        <tbody id="tablaEstudiantes"></tbody>
-    </table>
-</div>
+<table id="tblEstudiantes" class="table table-bordered table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>NOMBRES</th>
+            <th>APELLIDOS</th>
+            <th>FECHA NACIMIENTO</th>
+            <th>FOTO</th>
+            <th>ACCIONES</th>
+        </tr>
+    </thead>
+    <tbody id="tablaEstudiantes"></tbody>
+</table>
 
 <!-- Modal -->
 <div class="modal fade" id="modalEstudiante" tabindex="-1" aria-hidden="true">
@@ -63,6 +60,7 @@
     </div>
 </div>
 
+<!-- CSRF -->
 <script>
 function getCookie(name) {
     let cookieValue = null;
@@ -81,21 +79,25 @@ function getCookie(name) {
 const csrftoken = getCookie('csrftoken');
 </script>
 
+<!-- CRUD -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    listadoEstudiantes();
+document.getElementById('formEstudiante').addEventListener('submit', function (e) {
+    e.preventDefault();
 
-    document.getElementById('formEstudiante').addEventListener('submit', function (e) {
-        e.preventDefault();
-        const id = document.getElementById('personaId').value;
-        const formData = new FormData(this);
-        if (id) {
-            actualizarEstudiante(id, formData);
-        } else {
-            nuevoEstudiante(formData);
-        }
-    });
+    // Validar el formulario usando jQuery Validate
+    if (!$("#formEstudiante").valid()) {
+        return;
+    }
+
+    const id = document.getElementById('personaId').value;
+    const formData = new FormData(this);
+    if (id) {
+        actualizarEstudiante(id, formData);
+    } else {
+        nuevoEstudiante(formData);
+    }
 });
+
 
 function listadoEstudiantes() {
     fetch('/listadoEstudiantes/')
@@ -122,16 +124,16 @@ function listadoEstudiantes() {
 }
 
 function abrirModal() {
+    document.getElementById('formEstudiante').reset();
+    document.getElementById('personaId').value = '';
     const modal = new bootstrap.Modal(document.getElementById('modalEstudiante'));
     modal.show();
 }
 
 function cerrarModal() {
-    listadoEstudiantes();
     const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstudiante'));
     modal.hide();
-    document.getElementById('formEstudiante').reset();
-    document.getElementById('personaId').value = '';
+    listadoEstudiantes();
 }
 
 function nuevoEstudiante(formData) {
@@ -157,7 +159,8 @@ function editar(id) {
                 document.getElementById('nombre').value = estudiante.nombre;
                 document.getElementById('apellidos').value = estudiante.apellidos;
                 document.getElementById('fecha_nacimiento').value = estudiante.fecha_nacimiento;
-                abrirModal();
+                const modal = new bootstrap.Modal(document.getElementById('modalEstudiante'));
+                modal.show();
             }
         });
 }
@@ -194,21 +197,23 @@ function eliminar(id) {
 <script>
 new DataTable('#tblEstudiantes', {
     layout: {
-        topStart: {
-            buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
-        }
+        topStart: { buttons: ['copy', 'csv', 'excel', 'pdf', 'print'] }
     }
 });
 </script>
 
-<!-- Validación con jQuery Validate -->
+<!-- Validación -->
 <script>
 $("#formEstudiante").validate({
     rules: {
         nombre: { required: true, minlength: 3 },
         apellidos: { required: true, minlength: 3 },
         fecha_nacimiento: { required: true },
-        foto: { required: true }
+        foto: {
+            required: function() {
+                return $('#personaId').val() === '';
+            }
+        }
     },
     messages: {
         nombre: {
@@ -229,7 +234,7 @@ $("#formEstudiante").validate({
 });
 </script>
 
-<!-- FileInput para imagen -->
+<!-- FileInput -->
 <script>
 $("#foto").fileinput({
     language: "es",
